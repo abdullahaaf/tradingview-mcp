@@ -11,7 +11,8 @@ Sources:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 # feedparser is bundled with agent-reach (installed globally)
@@ -44,19 +45,82 @@ _TIMEOUT = 8
 
 # ─── Public API ───────────────────────────────────────────────────────────────
 
-def fetch_news(
-    symbol: Optional[str] = None,
-    category: str = "stocks",
-    limit: int = 10,
-) -> list[dict]:
+# def fetch_news(
+#     symbol: Optional[str] = None,
+#     category: str = "stocks",
+#     limit: int = 10,
+# ) -> list[dict]:
+#     """
+#     Fetch financial news from RSS feeds.
+
+#     Args:
+#         symbol:   Optional ticker filter. If provided, only returns headlines
+#                   that mention the symbol (case-insensitive). e.g. "AAPL", "BTC"
+#         category: Feed group — "crypto" | "stocks" | "all"
+#         limit:    Maximum number of items to return
+
+#     Returns:
+#         List of news items with title, url, published, summary, source.
+#     """
+#     if not _FEEDPARSER_AVAILABLE:
+#         return [{
+#             "error": "feedparser not installed. Run: pip install feedparser",
+#             "install": "pip install feedparser"
+#         }]
+
+#     feeds = RSS_FEEDS.get(category, RSS_FEEDS["stocks"])
+#     results: list[dict] = []
+
+#     for feed_info in feeds:
+#         if len(results) >= limit:
+#             break
+#         try:
+#             feed = feedparser.parse(feed_info["url"])
+#             source_name = feed.feed.get("title", feed_info["name"])
+
+#             for entry in feed.entries:
+#                 if len(results) >= limit:
+#                     break
+
+#                 title = entry.get("title", "")
+#                 summary = entry.get("summary", "") or entry.get("description", "")
+
+#                 # Symbol filter
+#                 if symbol:
+#                     combined = f"{title} {summary}".upper()
+#                     if symbol.upper() not in combined:
+#                         continue
+
+#                 results.append({
+#                     "title": title,
+#                     "url": entry.get("link", ""),
+#                     "published": entry.get("published", ""),
+#                     "summary": _clean_html(summary)[:300],
+#                     "source": source_name,
+#                 })
+
+#         except Exception:
+#             continue
+
+#     return results[:limit]
+
+def set_time():
+    tz = ZoneInfo("Asia/Jakarta")
+
+    today = datetime.now(tz)
+    yesterday = today - timedelta(days=1)
+
+    today_first_format = today.strftime("%d %b %Y")
+    today_second_format = today.strftime("%b %d, %Y")
+
+    yesterday_first_format = yesterday.strftime("%d %b %Y")
+    yesterday_second_format = yesterday.strftime("%b %d, %Y")
+
+    return today_first_format, today_second_format, yesterday_first_format, yesterday_second_format
+
+def fetch_news() -> list[dict]:
     """
     Fetch financial news from RSS feeds.
-
-    Args:
-        symbol:   Optional ticker filter. If provided, only returns headlines
-                  that mention the symbol (case-insensitive). e.g. "AAPL", "BTC"
-        category: Feed group — "crypto" | "stocks" | "all"
-        limit:    Maximum number of items to return
 
     Returns:
         List of news items with title, url, published, summary, source.
@@ -67,55 +131,52 @@ def fetch_news(
             "install": "pip install feedparser"
         }]
 
-    feeds = RSS_FEEDS.get(category, RSS_FEEDS["stocks"])
+    feeds = [
+        {"url": "https://www.dailyforex.com/rss/forexnews.xml", "name": "Daily Forex"},
+        {"url": "https://news.instaforex.com/news", "name": "Insta Forex"},
+        {"url": "https://www.investing.com/rss/forex_Fundamental.rss", "name": "Investing.com Forex"},
+        {"url": "https://investinglive.com/feed/news", "name": "Reuters Business"},
+        {"url": "https://www.myfxbook.com/rss/latest-forex-news", "name": "MyFxBook"},
+    ]
     results: list[dict] = []
+    today_first_format, today_second_format, yesterday_first_format, yesterday_second_format = set_time()
 
     for feed_info in feeds:
-        if len(results) >= limit:
-            break
         try:
             feed = feedparser.parse(feed_info["url"])
             source_name = feed.feed.get("title", feed_info["name"])
 
             for entry in feed.entries:
-                if len(results) >= limit:
-                    break
 
                 title = entry.get("title", "")
                 summary = entry.get("summary", "") or entry.get("description", "")
 
-                # Symbol filter
-                if symbol:
-                    combined = f"{title} {summary}".upper()
-                    if symbol.upper() not in combined:
-                        continue
-
-                results.append({
-                    "title": title,
-                    "url": entry.get("link", ""),
-                    "published": entry.get("published", ""),
-                    "summary": _clean_html(summary)[:300],
-                    "source": source_name,
-                })
+                # Filter only yesterday - today news
+                if today_first_format in entry.published or today_second_format in entry.published or \
+                yesterday_first_format in entry.published or \
+                yesterday_second_format in entry.published :
+                  results.append({
+                      "title": title,
+                      "url": entry.get("link", ""),
+                      "published": entry.get("published", ""),
+                      "summary": _clean_html(summary),
+                      "source": source_name,
+                  })
 
         except Exception:
             continue
 
-    return results[:limit]
+    return results
 
 
-def fetch_news_summary(
-    symbol: Optional[str] = None,
-    category: str = "stocks",
-    limit: int = 10,
-) -> dict:
+def fetch_news_summary() -> dict:
     """
     Fetch news and return structured dict for MCP tool output.
     """
-    items = fetch_news(symbol, category, limit)
+    items = fetch_news()
     return {
-        "symbol": symbol,
-        "category": category,
+        "symbol": 'Gold',
+        "category": 'Futures',
         "count": len(items),
         "feedparser_available": _FEEDPARSER_AVAILABLE,
         "items": items,

@@ -463,16 +463,21 @@ def market_sentiment(symbol: str, category: str = "all", limit: int = 20) -> dic
     return analyze_sentiment(symbol, category, limit)
 
 
-@mcp.tool()
-def financial_news(symbol: str = None, category: str = "stocks", limit: int = 10) -> dict:
-    """Real-time financial news from RSS feeds (Reuters, CoinDesk, etc.)
+# @mcp.tool()
+# def financial_news(symbol: str = None, category: str = "stocks", limit: int = 10) -> dict:
+#     """Real-time financial news from RSS feeds (Reuters, CoinDesk, etc.)
 
-    Args:
-        symbol: Optional symbol filter ("AAPL", "BTC"). None = all news.
-        category: Feed category ("crypto", "stocks", "all")
-        limit: Max number of news items
-    """
-    return fetch_news_summary(symbol, category, limit)
+#     Args:
+#         symbol: Optional symbol filter ("AAPL", "BTC"). None = all news.
+#         category: Feed category ("crypto", "stocks", "all")
+#         limit: Max number of news items
+#     """
+#     return fetch_news_summary(symbol, category, limit)
+
+@mcp.tool()
+def financial_news() -> dict:
+    """Real-time financial news from RSS feeds"""
+    return fetch_news_summary()
 
 
 @mcp.tool()
