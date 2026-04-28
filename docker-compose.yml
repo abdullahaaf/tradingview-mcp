@@ -3,12 +3,29 @@ version: '3.8'
 services:
   tradingview-mcp:
     build: .
-    image: atilaahmet/tradingview-mcp:latest
     container_name: tradingview-mcp
     ports:
-      - "8080:8000"
+      - "8085:8000"
     restart: unless-stopped
     environment:
       # Optional: Add any future API keys or environment variables here
       - PORT=8000
       - HOST=0.0.0.0
+
+  nginx:
+    image: nginx:alpine
+    container_name: tradingview-mcp-nginx
+    network_mode: "service:tradingview-mcp"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - tradingview-mcp
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:1734-a62d63d49d3f
+    container_name: tradingview-mcp-tunnel
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiNjZhNjU0OWY1Y2U2NzFiNDc0OWIxYTFmY2Q1NWZjYjAiLCJ0IjoiNWFjMTA2NTEtYTk2ZS00YzZmLWE3YzQtZThjNzQxOWJlMDU5IiwicyI6Ik1qQmxOMlU0TXprdE5XTTFOUzAwT1RjMkxXRXlObUV0TkRNek1UUmpPVE5oTmpSayJ9
+    restart: unless-stopped
