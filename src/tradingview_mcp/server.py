@@ -43,6 +43,7 @@ from tradingview_mcp.core.services.egx_service import (
 )
 from tradingview_mcp.core.services.sentiment_service import analyze_sentiment
 from tradingview_mcp.core.services.news_service import fetch_news_summary
+from tradingview_mcp.core.services.tradingview_service import fetch_tradingview_feed
 from tradingview_mcp.core.services.yahoo_finance_service import (
     get_price,
     get_market_snapshot,
@@ -478,6 +479,11 @@ def market_sentiment(symbol: str, category: str = "all", limit: int = 20) -> dic
 def financial_news() -> dict:
     """Real-time financial news from RSS feeds"""
     return fetch_news_summary()
+
+@mcp.tool()
+def tradingview_feed() -> list[dict]:
+    """Fetch latest TradingView technical analysis feed items."""
+    return fetch_tradingview_feed()
 
 
 @mcp.tool()
