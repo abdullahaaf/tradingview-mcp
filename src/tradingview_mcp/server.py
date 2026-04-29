@@ -81,7 +81,7 @@ mcp = FastMCP(
 
 # ── Screener tools ─────────────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def top_gainers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: int = 25) -> list[dict]:
     """Return top gainers for an exchange and timeframe using Bollinger Band analysis.
 
@@ -97,7 +97,7 @@ def top_gainers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: int = 2
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows]
 
 
-@mcp.tool()
+# @mcp.tool()
 def top_losers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: int = 25) -> list[dict]:
     """Return top losers for an exchange and timeframe. Supports crypto (KUCOIN, BINANCE, MEXC) and stocks (EGX, BIST, NASDAQ)."""
     exchange = sanitize_exchange(exchange, "KUCOIN")
@@ -108,7 +108,7 @@ def top_losers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: int = 25
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows[:limit]]
 
 
-@mcp.tool()
+# @mcp.tool()
 def bollinger_scan(exchange: str = "KUCOIN", timeframe: str = "4h", bbw_threshold: float = 0.04, limit: int = 50) -> list[dict]:
     """Scan for assets with low Bollinger Band Width (squeeze detection). Works with crypto and stocks.
 
@@ -125,7 +125,7 @@ def bollinger_scan(exchange: str = "KUCOIN", timeframe: str = "4h", bbw_threshol
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows]
 
 
-@mcp.tool()
+# @mcp.tool()
 def rating_filter(exchange: str = "KUCOIN", timeframe: str = "5m", rating: int = 2, limit: int = 25) -> list[dict]:
     """Filter coins by Bollinger Band rating.
 
@@ -145,7 +145,7 @@ def rating_filter(exchange: str = "KUCOIN", timeframe: str = "5m", rating: int =
 
 # ── Coin / asset analysis ──────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def coin_analysis(symbol: str, exchange: str = "KUCOIN", timeframe: str = "15m") -> dict:
     """Get detailed analysis for a specific asset (coin or stock) on specified exchange and timeframe.
 
@@ -164,7 +164,7 @@ def coin_analysis(symbol: str, exchange: str = "KUCOIN", timeframe: str = "15m")
 
 # ── Candle pattern tools ───────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def consecutive_candles_scan(
     exchange: str = "KUCOIN",
     timeframe: str = "15m",
@@ -191,7 +191,7 @@ def consecutive_candles_scan(
     return scan_consecutive_candles(exchange, timeframe, pattern_type, candle_count, min_growth, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def advanced_candle_pattern(
     exchange: str = "KUCOIN",
     base_timeframe: str = "15m",
@@ -239,7 +239,7 @@ def advanced_candle_pattern(
 
 # ── Volume scanner tools ───────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def volume_breakout_scanner(
     exchange: str = "KUCOIN",
     timeframe: str = "15m",
@@ -264,7 +264,7 @@ def volume_breakout_scanner(
     return volume_breakout_scan(exchange, timeframe, volume_multiplier, price_change_min, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def volume_confirmation_analysis(symbol: str, exchange: str = "KUCOIN", timeframe: str = "15m") -> dict:
     """Detailed volume confirmation analysis for a specific coin.
 
@@ -278,7 +278,7 @@ def volume_confirmation_analysis(symbol: str, exchange: str = "KUCOIN", timefram
     return volume_confirmation_analyze(symbol, exchange, timeframe)
 
 
-@mcp.tool()
+# @mcp.tool()
 def smart_volume_scanner(
     exchange: str = "KUCOIN",
     min_volume_ratio: float = 2.0,
@@ -304,7 +304,7 @@ def smart_volume_scanner(
 
 # ── Multi-agent analysis ───────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def multi_agent_analysis(symbol: str, exchange: str = "KUCOIN", timeframe: str = "15m") -> dict:
     """Run a multi-agent debate (Technical, Sentiment, Risk) for a specific symbol.
 
@@ -324,7 +324,7 @@ def multi_agent_analysis(symbol: str, exchange: str = "KUCOIN", timeframe: str =
 
 # ── EGX market tools ───────────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def egx_market_overview(timeframe: str = "1D", limit: int = 10) -> dict:
     """Get a comprehensive overview of the Egyptian Exchange (EGX) market.
 
@@ -337,7 +337,7 @@ def egx_market_overview(timeframe: str = "1D", limit: int = 10) -> dict:
     return get_egx_market_overview(timeframe, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_sector_scan(sector: str = "", timeframe: str = "1D", limit: int = 20) -> dict:
     """Scan EGX stocks by sector. Shows available sectors if none specified.
 
@@ -352,7 +352,7 @@ def egx_sector_scan(sector: str = "", timeframe: str = "1D", limit: int = 20) ->
     return scan_egx_sector(sector, timeframe, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_sector_scanner(
     timeframe: str = "1D",
     top_n_sectors: int = 5,
@@ -374,7 +374,7 @@ def egx_sector_scanner(
     return run_egx_sector_scanner(timeframe, top_n_sectors, top_n_stocks, min_stock_score)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_index_analysis(index: str = "EGX30", timeframe: str = "1D", limit: int = 30) -> dict:
     """Analyse an EGX index showing constituent performance with full indicators.
 
@@ -388,7 +388,7 @@ def egx_index_analysis(index: str = "EGX30", timeframe: str = "1D", limit: int =
     return analyze_egx_index(index, timeframe, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_stock_screener(
     timeframe: str = "1D",
     min_score: int = 55,
@@ -409,7 +409,7 @@ def egx_stock_screener(
     return screen_egx_stocks(timeframe, min_score, index_filter, limit)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_trade_plan(symbol: str, timeframe: str = "1D") -> dict:
     """Generate a full trade plan for a specific EGX stock.
 
@@ -421,7 +421,7 @@ def egx_trade_plan(symbol: str, timeframe: str = "1D") -> dict:
     return generate_egx_trade_plan(symbol, timeframe)
 
 
-@mcp.tool()
+# @mcp.tool()
 def egx_fibonacci_retracement(symbol: str, lookback: str = "52W", timeframe: str = "1D") -> dict:
     """Fibonacci retracement analysis for EGX stocks.
 
@@ -437,7 +437,7 @@ def egx_fibonacci_retracement(symbol: str, lookback: str = "52W", timeframe: str
 
 # ── Multi-timeframe analysis ───────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def multi_timeframe_analysis(symbol: str, exchange: str = "KUCOIN") -> dict:
     """Multi-timeframe alignment analysis (Weekly → Daily → 4H → 1H → 15m).
 
@@ -452,7 +452,7 @@ def multi_timeframe_analysis(symbol: str, exchange: str = "KUCOIN") -> dict:
 
 # ── Sentiment & news tools ─────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def market_sentiment(symbol: str, category: str = "all", limit: int = 20) -> dict:
     """Real-time Reddit sentiment analysis for stocks and crypto.
 
@@ -486,7 +486,7 @@ def tradingview_feed() -> list[dict]:
     return fetch_tradingview_feed()
 
 
-@mcp.tool()
+# @mcp.tool()
 def combined_analysis(symbol: str, exchange: str = "NASDAQ", timeframe: str = "1D") -> dict:
     """POWER TOOL: TradingView technical analysis + Reddit sentiment + Financial news.
 
@@ -529,7 +529,7 @@ def combined_analysis(symbol: str, exchange: str = "NASDAQ", timeframe: str = "1
 
 # ── Backtest tools ─────────────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def backtest_strategy(
     symbol: str,
     strategy: str,
@@ -561,7 +561,7 @@ def backtest_strategy(
     )
 
 
-@mcp.tool()
+# @mcp.tool()
 def compare_strategies(
     symbol: str,
     period: str = "1y",
@@ -579,7 +579,7 @@ def compare_strategies(
     return _compare_strategies(symbol, period, initial_capital, interval=interval)
 
 
-@mcp.tool()
+# @mcp.tool()
 def walk_forward_backtest_strategy(
     symbol: str,
     strategy: str,
@@ -612,7 +612,7 @@ def walk_forward_backtest_strategy(
 
 # ── Yahoo Finance tools ────────────────────────────────────────────────────────
 
-@mcp.tool()
+# @mcp.tool()
 def yahoo_price(symbol: str) -> dict:
     """Real-time price quote from Yahoo Finance for any stock, crypto, ETF or index.
 
@@ -622,7 +622,7 @@ def yahoo_price(symbol: str) -> dict:
     return get_price(symbol)
 
 
-@mcp.tool()
+# @mcp.tool()
 def market_snapshot() -> dict:
     """Global market overview: major indices, top crypto, FX rates, and key ETFs.
     Powered by Yahoo Finance.
