@@ -132,6 +132,11 @@ def fetch_news() -> list[dict]:
         }]
 
     feeds = [
+        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362", "name": "CNBC World News"},
+        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362", "name": "CNBC US News"},
+        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258", "name": "CNBC Economy News"},
+        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", "name": "CNBC Markets News"},
+        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19836768", "name": "CNBC Energy News"},
         {"url": "https://www.dailyforex.com/rss/forexnews.xml", "name": "Daily Forex"},
         {"url": "https://news.instaforex.com/news", "name": "Insta Forex"},
         {"url": "https://www.investing.com/rss/forex_Fundamental.rss", "name": "Investing.com Forex"},
