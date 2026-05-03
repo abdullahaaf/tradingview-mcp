@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import logging
+
 # set datetime
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 tz = ZoneInfo("Asia/Jakarta")
 
@@ -46,7 +54,14 @@ def fetch_tradingview_feed() -> list[dict]:
     try:
       feed = feedparser.parse("https://www.tradingview.com/feed/?symbol=xauusd")
       # source_name = feed.feed.get("title", feed_info["name"])
-      
+
+      logger.info(
+          "Timezone: %s | today=%s / %s | yesterday=%s / %s",
+          tz, today_first_format, today_second_format,
+          yesterday_first_format, yesterday_second_format,
+      )
+      logger.info("Feed entries before filter: %d", len(feed.entries))
+
       for entry in feed.entries:
         # Filter only yesterday - today news
         if today_first_format in entry.published or today_second_format in entry.published or yesterday_first_format in entry.published or yesterday_second_format in entry.published :
@@ -62,6 +77,6 @@ def fetch_tradingview_feed() -> list[dict]:
 
     except Exception:
       raise
-        
 
+    logger.info("Feed entries after filter: %d", len(results))
     return results
