@@ -11,9 +11,12 @@ Sources:
 """
 from __future__ import annotations
 
+from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from typing import Optional
+
+tz = ZoneInfo("Asia/Jakarta")
 
 # feedparser is bundled with agent-reach (installed globally)
 try:
@@ -118,6 +121,37 @@ def set_time():
 
     return today_first_format, today_second_format, yesterday_first_format, yesterday_second_format
 
+def _parse_pubdate(published_str: str) -> datetime | None:
+    """
+    Try multiple date formats to parse a published string into a datetime.
+    Returns None if all formats fail.
+    """
+    if not published_str:
+        return None
+
+    # Try RFC 2822 format first (common in RSS: "Wed, 06 May 2026 10:30:00 +0000")
+    try:
+        return parsedate_to_datetime(published_str)
+    except Exception:
+        pass
+
+    # Try common fallback formats
+    for fmt in (
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%d %b %Y %H:%M:%S %z",
+        "%b %d, %Y %H:%M:%S %z",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%d %H:%M:%S",
+        "%d %b %Y",
+        "%b %d, %Y",
+    ):
+        try:
+            return datetime.strptime(published_str.strip(), fmt)
+        except ValueError:
+            continue
+
+    return None
+
 def fetch_news() -> list[dict]:
     """
     Fetch financial news from RSS feeds.
@@ -155,22 +189,31 @@ def fetch_news() -> list[dict]:
 
                 title = entry.get("title", "")
                 summary = entry.get("summary", "") or entry.get("description", "")
+                raw_published = entry.get("published", "")
 
-                # Filter only yesterday - today news
-                if today_first_format in entry.published or today_second_format in entry.published or \
-                yesterday_first_format in entry.published or \
-                yesterday_second_format in entry.published :
-                  results.append({
-                      "title": title,
-                      "url": entry.get("link", ""),
-                      "published": entry.get("published", ""),
-                      "summary": _clean_html(summary),
-                      "source": source_name,
-                  })
+                 # Filter only yesterday–today news (keep original string-based check)
+                if not any(d in raw_published for d in (
+                    today_first_format, today_second_format,
+                    yesterday_first_format, yesterday_second_format,
+                )):
+                    continue
+
+                pub_dt = _parse_pubdate(raw_published)
+
+                results.append({
+                    "title": title,
+                    "url": entry.get("link", ""),
+                    "published": pub_dt,
+                    "summary": _clean_html(summary),
+                    "source": source_name,
+                })
+                  
 
         except Exception:
             continue
 
+    # Sort descending: entries without a date go to the bottom
+    results.sort(key=lambda x: x["published"] or datetime.min.replace(tzinfo=tz), reverse=True)
     return results
 
 

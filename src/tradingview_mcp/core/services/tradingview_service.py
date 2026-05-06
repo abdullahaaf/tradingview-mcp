@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import logging
+import logging, re
 
 # set datetime
+from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -37,46 +38,67 @@ def _clean_html(text: str) -> str:
         text = text.replace(entity, char)
     return text.strip()
 
-def fetch_tradingview_feed() -> list[dict]:
+def _parse_pubdate(published_str: str) -> datetime | None:
     """
-    Fetch Tradingview feed.
+    Try multiple date formats to parse a published string into a datetime.
+    Returns None if all formats fail.
+    """
+    if not published_str:
+        return None
 
-    Returns:
-        List of news items with title, url, published, summary, source.
-    """
+    # Try RFC 2822 format first (common in RSS: "Wed, 06 May 2026 10:30:00 +0000")
+    try:
+        return parsedate_to_datetime(published_str)
+    except Exception:
+        pass
+
+    # Try common fallback formats
+    for fmt in (
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%d %b %Y %H:%M:%S %z",
+        "%b %d, %Y %H:%M:%S %z",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%d %H:%M:%S",
+        "%d %b %Y",
+        "%b %d, %Y",
+    ):
+        try:
+            return datetime.strptime(published_str.strip(), fmt)
+        except ValueError:
+            continue
+
+    return None
+
+def fetch_tradingview_feed() -> list[dict]:
     if not _FEEDPARSER_AVAILABLE:
-        return [{
-            "error": "feedparser not installed. Run: pip install feedparser",
-            "install": "pip install feedparser"
-        }]
+        return [{"error": "feedparser not installed.", "install": "pip install feedparser"}]
 
     results: list[dict] = []
     try:
-      feed = feedparser.parse("https://www.tradingview.com/feed/?symbol=xauusd")
-      # source_name = feed.feed.get("title", feed_info["name"])
+        feed = feedparser.parse("https://www.tradingview.com/feed/?symbol=xauusd")
+        for entry in feed.entries:
+            raw_published = entry.get("published", "")
 
-      logger.info(
-          "Timezone: %s | today=%s / %s | yesterday=%s / %s",
-          tz, today_first_format, today_second_format,
-          yesterday_first_format, yesterday_second_format,
-      )
-      logger.info("Feed entries before filter: %d", len(feed.entries))
+            if not any(d in raw_published for d in (
+                today_first_format, today_second_format,
+                yesterday_first_format, yesterday_second_format,
+            )):
+                continue
 
-      for entry in feed.entries:
-        # Filter only yesterday - today news
-        if today_first_format in entry.published or today_second_format in entry.published or yesterday_first_format in entry.published or yesterday_second_format in entry.published :
-          results.append({
-              "title": entry.get('title', ''),
-              "title_detail": entry.get('title_detail', ''),
-              "url": entry.get("links", ''),
-              "published": entry.get("published", ''),
-              "summary": _clean_html(entry.get('summary', '')),
-              "summary_detail": entry.get('summary_detail', ''),
-              "content": entry.get('content', '')
-          })
+            pub_dt = _parse_pubdate(raw_published)
 
+            results.append({
+                "title": entry.get("title", ""),
+                "title_detail": entry.get("title_detail", ""),
+                "url": entry.get("links", ""),
+                "published": pub_dt,            # datetime object (or None)
+                "published_raw": raw_published,  # keep original string as fallback
+                "summary": _clean_html(entry.get("summary", "")),
+                "summary_detail": entry.get("summary_detail", ""),
+                "content": entry.get("content", ""),
+            })
     except Exception:
-      raise
+        raise
 
-    logger.info("Feed entries after filter: %d", len(results))
+    results.sort(key=lambda x: x["published"] or datetime.min.replace(tzinfo=tz), reverse=True)
     return results
