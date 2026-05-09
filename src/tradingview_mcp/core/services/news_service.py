@@ -13,7 +13,7 @@ import os, time
 from __future__ import annotations
 
 from email.utils import parsedate_to_datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # set timezone to UTC
 os.environ["TZ"] = "UTC"
