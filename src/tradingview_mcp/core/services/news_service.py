@@ -9,14 +9,18 @@ Sources:
   stocks: Reuters Business News
   all:    Combined
 """
+import os, time
 from __future__ import annotations
 
 from email.utils import parsedate_to_datetime
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
-from typing import Optional
+from datetime import datetime, timedelta
 
-tz = ZoneInfo("Asia/Jakarta")
+# set timezone to UTC
+os.environ["TZ"] = "UTC"
+time.tzset()
+
+current = datetime.now()
+previous = current - timedelta(days=1)
 
 # feedparser is bundled with agent-reach (installed globally)
 try:
@@ -107,51 +111,6 @@ _TIMEOUT = 8
 
 #     return results[:limit]
 
-def set_time():
-    tz = ZoneInfo("Asia/Jakarta")
-
-    today = datetime.now(tz)
-    yesterday = today - timedelta(days=1)
-
-    today_first_format = today.strftime("%d %b %Y")
-    today_second_format = today.strftime("%b %d, %Y")
-
-    yesterday_first_format = yesterday.strftime("%d %b %Y")
-    yesterday_second_format = yesterday.strftime("%b %d, %Y")
-
-    return today_first_format, today_second_format, yesterday_first_format, yesterday_second_format
-
-def _parse_pubdate(published_str: str) -> datetime | None:
-    """
-    Try multiple date formats to parse a published string into a datetime.
-    Returns None if all formats fail.
-    """
-    if not published_str:
-        return None
-
-    # Try RFC 2822 format first (common in RSS: "Wed, 06 May 2026 10:30:00 +0000")
-    try:
-        return parsedate_to_datetime(published_str)
-    except Exception:
-        pass
-
-    # Try common fallback formats
-    for fmt in (
-        "%a, %d %b %Y %H:%M:%S %z",
-        "%d %b %Y %H:%M:%S %z",
-        "%b %d, %Y %H:%M:%S %z",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%d %H:%M:%S",
-        "%d %b %Y",
-        "%b %d, %Y",
-    ):
-        try:
-            return datetime.strptime(published_str.strip(), fmt)
-        except ValueError:
-            continue
-
-    return None
-
 def fetch_news() -> list[dict]:
     """
     Fetch financial news from RSS feeds.
@@ -178,7 +137,6 @@ def fetch_news() -> list[dict]:
         {"url": "https://www.myfxbook.com/rss/latest-forex-news", "name": "MyFxBook"},
     ]
     results: list[dict] = []
-    today_first_format, today_second_format, yesterday_first_format, yesterday_second_format = set_time()
 
     for feed_info in feeds:
         try:
@@ -191,30 +149,24 @@ def fetch_news() -> list[dict]:
                 summary = entry.get("summary", "") or entry.get("description", "")
                 raw_published = entry.get("published", "")
 
-                 # Filter only yesterday–today news (keep original string-based check)
-                if not any(d in raw_published for d in (
-                    today_first_format, today_second_format,
-                    yesterday_first_format, yesterday_second_format,
-                )):
-                    continue
+                pub_dt = parsedate_to_datetime(raw_published).replace(tzinfo=None) if raw_published else None
 
-                pub_dt = _parse_pubdate(raw_published)
-
-                results.append({
-                    "title": title,
-                    "url": entry.get("link", ""),
-                    "published": pub_dt,
-                    "summary": _clean_html(summary),
-                    "source": source_name,
-                })
+                if pub_dt and previous <= pub_dt <= current:
+                    results.append({
+                        "title": title,
+                        "url": entry.get("link", ""),
+                        "published": pub_dt,
+                        "summary": _clean_html(summary),
+                        "source": source_name,
+                    })
                   
 
         except Exception:
             continue
 
     # Sort descending: entries without a date go to the bottom
-    results.sort(key=lambda x: x["published"] or datetime.min.replace(tzinfo=tz), reverse=True)
-    return results
+    sorted_results = sorted(results, key=lambda x: x["published"], reverse=True)
+    return sorted_results
 
 
 def fetch_news_summary() -> dict:
