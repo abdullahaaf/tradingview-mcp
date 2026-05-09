@@ -1,6 +1,6 @@
-import logging, os, time
-
 from __future__ import annotations
+
+import logging, os, time
 
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta
