@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Financial News Service via RSS feeds.
 
@@ -10,7 +12,6 @@ Sources:
   all:    Combined
 """
 import os, time
-from __future__ import annotations
 
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
