@@ -16,7 +16,7 @@ os.environ["TZ"] = "UTC"
 time.tzset()
 
 current = datetime.now()
-previous = current - timedelta(days=1)
+previous = current.replace(hour=0, minute=0, second=0) - timedelta(days=1)
 
 try:
     import feedparser
@@ -30,6 +30,7 @@ def _clean_html(text: str) -> str:
     text = re.sub(r"<[^>]+>", "", text)
     for entity, char in (("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&nbsp;", " ")):
         text = text.replace(entity, char)
+    text = re.sub(r'\s+', ' ', text)  # collapse whitespace
     return text.strip()
 
 def fetch_tradingview_feed() -> list[dict]:
@@ -42,21 +43,22 @@ def fetch_tradingview_feed() -> list[dict]:
         for entry in feed.entries:
             raw_published = entry.get("published", "")
 
-            pub_dt = parsedate_to_datetime(raw_published).replace(tzinfo=None) if raw_published else None
+            pub_dt = parsedate_to_datetime(raw_published).replace(tzinfo=None)
+            summary = _clean_html(entry.get("summary", ""))
+            summary_detail = _clean_html(entry.get("summary_detail", "").get('value'))
+            conclusion = summary if summary == summary_detail else f'{summary} {summary_detail}'
 
-            if pub_dt and previous <= pub_dt <= current:
-                results.append({
-                    "title": entry.get("title", ""),
-                    "title_detail": entry.get("title_detail", ""),
-                    "url": entry.get("links", ""),
-                    "published": pub_dt,            # datetime object (or None)
-                    "published_raw": raw_published,  # keep original string as fallback
-                    "summary": _clean_html(entry.get("summary", "")),
-                    "summary_detail": entry.get("summary_detail", ""),
-                    "content": entry.get("content", ""),
-                })
+            if previous <= pub_dt <= current:
+              results.append({
+                  "title": entry.get("title", ""),
+                  "title_detail": entry.get("title_detail", ""),
+                  "url": entry.get("links", ""),
+                  "published": pub_dt,
+                  "summary": conclusion,
+                  "content": _clean_html(entry.get("content", "")[0].get('value')),
+              })
     except Exception:
         raise
 
-    sorted_results = sorted(results, key=lambda x: x["published"], reverse=True)
+    sorted_results = sorted(results, key=lambda x: x.get('published'), reverse=True)
     return sorted_results

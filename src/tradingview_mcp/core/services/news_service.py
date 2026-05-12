@@ -112,6 +112,22 @@ _TIMEOUT = 8
 
 #     return results[:limit]
 
+def _derive_source(url: str) -> str:
+    SOURCE_MAP = {
+        "cnbc.com":        "CNBC",
+        "marketwatch.com": "MarketWatch",
+        "instaforex.com":  "InstaForex",
+        "reuters.com":     "Reuters",
+        "myfxbook.com":    "MyFXBook",
+        "dailyforex.com":  "DailyForex",
+        "investing.com":   "Investing.com",
+        "investinglive.com": "InvestingLive",
+    }
+    for domain, label in SOURCE_MAP.items():
+        if domain in url:
+            return label
+    return "Unknown"
+
 def fetch_news() -> list[dict]:
     """
     Fetch financial news from RSS feeds.
@@ -120,54 +136,63 @@ def fetch_news() -> list[dict]:
         List of news items with title, url, published, summary, source.
     """
     if not _FEEDPARSER_AVAILABLE:
-        return [{
-            "error": "feedparser not installed. Run: pip install feedparser",
-            "install": "pip install feedparser"
-        }]
+        return [{"error": "feedparser not installed.", "install": "pip install feedparser"}]
 
-    feeds = [
-        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362", "name": "CNBC World News"},
-        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362", "name": "CNBC US News"},
-        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258", "name": "CNBC Economy News"},
-        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", "name": "CNBC Markets News"},
-        {"url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19836768", "name": "CNBC Energy News"},
-        {"url": "https://www.dailyforex.com/rss/forexnews.xml", "name": "Daily Forex"},
-        {"url": "https://news.instaforex.com/news", "name": "Insta Forex"},
-        {"url": "https://www.investing.com/rss/forex_Fundamental.rss", "name": "Investing.com Forex"},
-        {"url": "https://investinglive.com/feed/news", "name": "Reuters Business"},
-        {"url": "https://www.myfxbook.com/rss/latest-forex-news", "name": "MyFxBook"},
+    feed_urls = [
+        "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362",
+        "https://www.dailyforex.com/rss/forexnews.xml",
+        "https://news.instaforex.com/news",
+        "https://www.investing.com/rss/forex_Fundamental.rss",
+        "https://investinglive.com/feed/news",
+        "https://www.myfxbook.com/rss/latest-forex-news",
     ]
     results: list[dict] = []
 
-    for feed_info in feeds:
+    for feed_url in feed_urls:
         try:
-            feed = feedparser.parse(feed_info["url"])
-            source_name = feed.feed.get("title", feed_info["name"])
-
+            feed = feedparser.parse(feed_url)
             for entry in feed.entries:
+                # Parse tanggal per item — skip jika tidak valid
+                try:
+                    raw_published = entry.get("published", "")
+                    pub_dt = parsedate_to_datetime(raw_published).replace(tzinfo=None)
+                except Exception:
+                    continue
 
-                title = entry.get("title", "")
-                summary = entry.get("summary", "") or entry.get("description", "")
-                raw_published = entry.get("published", "")
+                if not (previous <= pub_dt <= current):
+                    continue
 
-                pub_dt = parsedate_to_datetime(raw_published).replace(tzinfo=None) if raw_published else None
+                # Resolve summary — gabung jika keduanya ada dan berbeda
+                raw_summary = _clean_html(entry.get("summary", ""))
+                raw_description = _clean_html(entry.get("description", ""))
 
-                if pub_dt and previous <= pub_dt <= current:
-                    results.append({
-                        "title": title,
-                        "url": entry.get("link", ""),
-                        "published": pub_dt,
-                        "summary": _clean_html(summary),
-                        "source": source_name,
-                    })
-                  
+                if raw_summary and raw_description and raw_summary != raw_description:
+                    summary = f"{raw_summary} {raw_description}"
+                else:
+                    summary = raw_summary or raw_description
+
+                # Kosongkan jika tidak informatif
+                if summary.lower() in ("none", "-", ""):
+                    summary = ""
+
+                # Resolve URL
+                url = entry.get("link", "")
+                if not url:
+                    links = entry.get("links", [])
+                    url = links[0].get("href", "") if links else ""
+
+                results.append({
+                    "title":     _clean_html(entry.get("title", "")),
+                    "url":       url,
+                    "published": pub_dt,
+                    "summary":   summary,
+                    "source":    _derive_source(url),
+                })
 
         except Exception:
             continue
 
-    # Sort descending: entries without a date go to the bottom
-    sorted_results = sorted(results, key=lambda x: x["published"], reverse=True)
-    return sorted_results
+    return sorted(results, key=lambda x: x["published"], reverse=True)
 
 
 def fetch_news_summary() -> dict:
@@ -193,4 +218,5 @@ def _clean_html(text: str) -> str:
     text = re.sub(r"<[^>]+>", "", text)
     for entity, char in (("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&nbsp;", " ")):
         text = text.replace(entity, char)
+    text = re.sub(r'\s+', ' ', text)  # collapse whitespace
     return text.strip()
