@@ -11,6 +11,7 @@ services:
       # Optional: Add any future API keys or environment variables here
       - PORT=8000
       - HOST=0.0.0.0
+      - LOG_DIR=/app/log
     volumes:
       - log_data:/app/log
 

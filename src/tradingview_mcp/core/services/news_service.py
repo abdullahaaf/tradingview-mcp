@@ -42,7 +42,7 @@ class _JsonFormatter(logging.Formatter):
 
 # ── File handler setup ────────────────────────────────────────────────────────
 
-_LOG_FILE = Path(__file__).parents[4] / "log" / "financial_news.log"
+_LOG_FILE = Path(os.environ.get("LOG_DIR", "log")) / "financial_news.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 _file_handler = RotatingFileHandler(
