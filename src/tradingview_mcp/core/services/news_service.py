@@ -134,12 +134,11 @@ def fetch_news() -> list[dict]:
     previous = current - timedelta(days=1)
 
     feed_urls = [
+        "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
         "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362",
-        "https://www.dailyforex.com/rss/forexnews.xml",
-        "https://news.instaforex.com/news",
-        "https://www.investing.com/rss/forex_Fundamental.rss",
-        "https://investinglive.com/feed/news",
-        "https://www.myfxbook.com/rss/latest-forex-news",
+        "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362",
+        "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",
+        "https://investinglive.com/feed",
     ]
 
     logger.info(
