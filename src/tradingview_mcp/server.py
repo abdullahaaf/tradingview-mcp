@@ -58,6 +58,8 @@ from tradingview_mcp.core.utils.validators import (
     sanitize_exchange,
 )
 
+from tradingview_mcp.core.services.ohlc_service import get_pivots
+
 try:
     import tradingview_screener  # noqa: F401
     TRADINGVIEW_SCREENER_AVAILABLE = True
@@ -484,6 +486,11 @@ def financial_news() -> dict:
 def tradingview_feed() -> list[dict]:
     """Fetch latest TradingView technical analysis feed items."""
     return fetch_tradingview_feed()
+
+@mcp.tool()
+def pivot_feeds() -> list[dict]:
+    """Get pivot points from multiple timeframes."""
+    return get_pivots()
 
 
 # @mcp.tool()
