@@ -488,7 +488,7 @@ def tradingview_feed() -> list[dict]:
     return fetch_tradingview_feed()
 
 @mcp.tool()
-def pivot_feeds() -> list[dict]:
+def pivot_feeds() -> dict:
     """Get pivot points from multiple timeframes."""
     return get_pivots()
 
