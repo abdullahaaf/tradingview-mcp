@@ -122,3 +122,147 @@ def get_pivots():
         "1h":    fetch_ohlc("1h"),
     }
     return calculate_all_pivots(ohlc)
+
+def is_market_session_valid() -> bool:
+    """
+    Returns True if the current UTC time falls within a valid XAUUSD trading window.
+
+    Invalid conditions (returns False):
+    - Saturday (weekday 5): market closed all day
+    - Sunday (weekday 6): market closed all day
+    - Monday (weekday 0) before 23:00 UTC: Monday Asia session has not yet opened;
+      get_asia_open_start() would return Sunday 23:00 UTC which is still market-closed time
+
+    Valid conditions (returns True):
+    - Monday 23:00 UTC through Friday ~21:00 UTC (standard forex market hours)
+    """
+    now_utc = datetime.now(timezone.utc)
+    weekday = now_utc.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
+
+    if weekday in (5, 6):
+        return False
+
+    if weekday == 0:
+        asia_open_monday = now_utc.replace(hour=23, minute=0, second=0, microsecond=0)
+        if now_utc < asia_open_monday:
+            return False
+
+    return True
+
+
+def get_asia_open_start() -> datetime:
+    """
+    Returns the timestamp of the most recent Asia session open (23:00 UTC).
+
+    Logic:
+    - If current time >= 23:00 UTC today: return 23:00 UTC today
+    - If current time < 23:00 UTC today: return 23:00 UTC yesterday
+
+    This ensures the anchor always points to the last Asia open that has already occurred,
+    never a future one.
+
+    Returns:
+        datetime — timezone-aware UTC datetime at 23:00:00
+    """
+    now_utc = datetime.now(timezone.utc)
+    asia_open_today = now_utc.replace(hour=23, minute=0, second=0, microsecond=0)
+
+    if now_utc < asia_open_today:
+        return asia_open_today - timedelta(days=1)
+    else:
+        return asia_open_today
+
+
+def get_last_closed_candle_time(now_utc: datetime, tf_minutes: int) -> datetime:
+    """
+    Returns the open time of the most recently closed candle for a given timeframe.
+
+    Calculated by subtracting the elapsed seconds within the current candle period
+    from the current UTC time. Used as end_date in API queries to exclude the
+    currently open (partial) candle.
+
+    Parameters:
+        now_utc    : current UTC datetime
+        tf_minutes : candle duration in minutes (e.g. 15 for M15, 5 for M5)
+
+    Returns:
+        datetime — UTC datetime of the last fully closed candle's open time
+    """
+    elapsed = int(now_utc.timestamp()) % (tf_minutes * 60)
+    return now_utc - timedelta(seconds=elapsed)
+
+
+def fetch_ohlc_session(timeframe: str, tf_minutes: int) -> list[dict]:
+    """
+    Fetches OHLC candles from the last Asia session open (23:00 UTC) up to
+    the most recently closed candle, using Twelve Data time_series endpoint.
+
+    Time range filtering is handled server-side via start_date and end_date
+    query parameters, avoiding manual post-fetch filtering. Only weekday
+    candles are returned — weekend entries are excluded.
+
+    Parameters:
+        timeframe  : Twelve Data interval string (e.g. "15min", "5min")
+        tf_minutes : candle duration in minutes, used to calculate end_date
+                     by excluding the currently open partial candle
+
+    Returns:
+        list of dict — OHLC candles in ascending order (oldest first),
+        each with keys: datetime, open, high, low, close
+    """
+    now_utc = datetime.now(timezone.utc)
+    asia_open = get_asia_open_start()
+    end_dt = get_last_closed_candle_time(now_utc, tf_minutes)
+
+    url = "https://api.twelvedata.com/time_series"
+    query_params = {
+        "symbol":     "XAU/USD",
+        "interval":   timeframe,
+        "start_date": asia_open.strftime("%Y-%m-%dT%H:%M:%S"),
+        "end_date":   end_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "order":      "ASC",
+        "apikey":     "fddf27722a3c42c8873eabd35b1e3f59",
+        "timezone":   "UTC",
+    }
+
+    response = requests.get(url, params=query_params)
+    response.raise_for_status()
+    data = response.json()
+
+    return [
+        val for val in data.get("values", [])
+        if is_weekday(val.get("datetime"))
+    ]
+
+
+def get_session_ohlc() -> dict | None:
+    """
+    Returns M15 and M5 OHLC candles from the last Asia session open (23:00 UTC)
+    up to the most recently closed candle at the time of the call.
+
+    Returns None if called outside valid market hours (weekend or Monday before
+    23:00 UTC). Callers must handle the None case before processing the result.
+
+    The asia_open_start and fetched_at fields are included for traceability —
+    they document the exact time window used for this fetch.
+
+    Returns:
+        None if market session is not valid, otherwise:
+        {
+            "asia_open_start" : str  — window start, format "YYYY-MM-DD HH:MM:SS UTC"
+            "fetched_at"      : str  — time of this call, format "YYYY-MM-DD HH:MM:SS UTC"
+            "m15"             : list[dict] — M15 candles, ascending (oldest first)
+            "m5"              : list[dict] — M5 candles, ascending (oldest first)
+        }
+    """
+    if not is_market_session_valid():
+        return None
+
+    now_utc = datetime.now(timezone.utc)
+
+    return {
+        "asia_open_start": get_asia_open_start().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "fetched_at":      now_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "m15":             fetch_ohlc_session("15min", 15),
+        "m5":              fetch_ohlc_session("5min",  5),
+    }

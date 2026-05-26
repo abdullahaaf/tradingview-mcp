@@ -58,7 +58,7 @@ from tradingview_mcp.core.utils.validators import (
     sanitize_exchange,
 )
 
-from tradingview_mcp.core.services.ohlc_service import get_pivots
+from tradingview_mcp.core.services.ohlc_service import get_pivots, get_session_ohlc
 
 try:
     import tradingview_screener  # noqa: F401
@@ -491,6 +491,23 @@ def tradingview_feed() -> list[dict]:
 def pivot_feeds() -> dict:
     """Get pivot points from multiple timeframes."""
     return get_pivots()
+
+@mcp.tool()
+def session_ohlc() -> dict | None:
+    """
+    Get M15 and M5 OHLC candles for XAUUSD from the last Asia session open (23:00 UTC)
+    up to the most recently closed candle.
+ 
+    Returns None if called outside valid market hours (weekend or Monday before 23:00 UTC).
+    Callers must handle the None case before processing the result.
+ 
+    Returns a dict with:
+    - asia_open_start : session window start timestamp (UTC)
+    - fetched_at      : time of this call (UTC)
+    - m15             : list of M15 candles, ascending (oldest first)
+    - m5              : list of M5 candles, ascending (oldest first)
+    """
+    return get_session_ohlc()
 
 
 # @mcp.tool()
