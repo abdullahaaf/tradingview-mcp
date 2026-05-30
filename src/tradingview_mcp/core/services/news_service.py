@@ -266,10 +266,12 @@ def fetch_news_summary() -> dict:
     """
     items = fetch_news()
     return {
-        "symbol": 'Gold',
-        "category": 'Futures',
-        "count": len(items),
-        "feedparser_available": _FEEDPARSER_AVAILABLE,
-        "items": items,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        'financial_news_data': {
+            "symbol": 'Gold',
+            "category": 'Futures',
+            "count": len(items),
+            "feedparser_available": _FEEDPARSER_AVAILABLE,
+            "items": items,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
     }

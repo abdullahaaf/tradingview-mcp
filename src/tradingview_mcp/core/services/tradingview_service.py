@@ -183,4 +183,6 @@ def fetch_tradingview_feed() -> list[dict]:
         },
     )
 
-    return sorted_results
+    return {
+        'tradingview_feed_data': sorted_results
+    }

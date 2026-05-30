@@ -191,9 +191,11 @@ def calculate_all_pivots(ohlc: dict) -> dict:
         dict with keys "daily", "4h", "1h", each containing pivot data
     """
     return {
-        "daily": calculate_pivot(ohlc["daily"], "daily", 1440),
-        "4h":    calculate_pivot(ohlc["4h"], "4h", 240),
-        "1h":    calculate_pivot(ohlc["1h"], "1h", 60),
+        'pivot_data': {
+            "daily": calculate_pivot(ohlc["daily"], "daily", 1440),
+            "4h":    calculate_pivot(ohlc["4h"], "4h", 240),
+            "1h":    calculate_pivot(ohlc["1h"], "1h", 60),
+        }
     }
 
 
@@ -352,8 +354,10 @@ def get_session_ohlc() -> dict | None:
     now_utc = datetime.now(timezone.utc)
 
     return {
-        "window_start": get_window_start().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "fetched_at":   now_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "m15":          fetch_ohlc_session("15min", 15),
-        "m5":           fetch_ohlc_session("5min",  5),
+        'ohlc_data' : {
+            "window_start": get_window_start().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "fetched_at":   now_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "m15":          fetch_ohlc_session("15min", 15),
+            "m5":           fetch_ohlc_session("5min",  5),
+        }
     }
