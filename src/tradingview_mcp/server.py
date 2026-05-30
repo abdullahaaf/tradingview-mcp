@@ -681,7 +681,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="TradingView Screener MCP server")
     parser.add_argument(
         "transport",
-        choices=["stdio", "streamable-http"],
+        choices=["stdio", "streamable-http", "rest"],
         default="stdio",
         nargs="?",
         help="Transport (default stdio)",
@@ -696,6 +696,10 @@ def main() -> None:
 
     if args.transport == "stdio":
         mcp.run()
+    elif args.transport == "rest":
+        import uvicorn
+        from tradingview_mcp.http_server import app
+        uvicorn.run(app, host=args.host, port=args.port)
     else:
         try:
             mcp.settings.host = args.host
