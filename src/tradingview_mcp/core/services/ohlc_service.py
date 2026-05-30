@@ -349,7 +349,7 @@ def get_session_ohlc() -> dict | None:
         }
     """
     if not is_market_session_valid():
-        return None
+        return {'ohlc_data': None}
 
     now_utc = datetime.now(timezone.utc)
 
