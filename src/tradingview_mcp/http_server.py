@@ -16,7 +16,7 @@ def health():
 def session_ohlc():
     result = get_session_ohlc()
     if result is None:
-        raise HTTPException(status_code=503, detail="Market session not active")
+        {}
     return result
 
 
