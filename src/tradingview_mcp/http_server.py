@@ -15,8 +15,6 @@ def health():
 @app.get("/api/session-ohlc")
 def session_ohlc():
     result = get_session_ohlc()
-    if result is None:
-        {}
     return result
 
 
