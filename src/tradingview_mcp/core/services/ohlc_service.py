@@ -181,36 +181,34 @@ def calculate_pivot(ohlc_data: list[dict], tf_label: str, tf_minutes: int) -> di
 
 def calculate_all_pivots(ohlc: dict) -> dict:
     """
-    Calculates pivot points for Daily, 4H, and 1H timeframes.
+    Calculates pivot points for Daily, 4H timeframes.
 
     Parameters:
-        ohlc : dict with keys "daily", "4h", "1h", each containing a
+        ohlc : dict with keys "daily", "4h" each containing a
                descending list of OHLC candles
 
     Returns:
-        dict with keys "daily", "4h", "1h", each containing pivot data
+        dict with keys "daily", "4h" each containing pivot data
     """
     return {
         'pivot_data': {
             "daily": calculate_pivot(ohlc["daily"], "daily", 1440),
             "4h":    calculate_pivot(ohlc["4h"], "4h", 240),
-            "1h":    calculate_pivot(ohlc["1h"], "1h", 60),
         }
     }
 
 
 def get_pivots() -> dict:
     """
-    Fetches OHLC data for Daily, 4H, and 1H timeframes and calculates
+    Fetches OHLC data for Daily, 4H, and calculates
     Classic and Fibonacci pivot points for each.
 
     Returns:
-        dict with keys "daily", "4h", "1h", each containing pivot data
+        dict with keys "daily", "4h", each containing pivot data
     """
     ohlc = {
         "daily": fetch_ohlc("1day"),
         "4h":    fetch_ohlc("4h"),
-        "1h":    fetch_ohlc("1h"),
     }
     return calculate_all_pivots(ohlc)
 
