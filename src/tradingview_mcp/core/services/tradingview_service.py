@@ -75,7 +75,7 @@ def _clean_html(text: str) -> str:
 _FEED_URL = "https://www.tradingview.com/feed/?symbol=xauusd"
 
 
-def fetch_tradingview_feed() -> list[dict]:
+def fetch_tradingview_feed() -> dict:
     if not _FEEDPARSER_AVAILABLE:
         return [{"error": "feedparser not installed.", "install": "pip install feedparser"}]
 
