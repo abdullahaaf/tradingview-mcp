@@ -478,17 +478,17 @@ def market_sentiment(symbol: str, category: str = "all", limit: int = 20) -> dic
 #     return fetch_news_summary(symbol, category, limit)
 
 @mcp.tool()
-def financial_news() -> dict:
+def financial_news() -> dict | None:
     """Real-time financial news from RSS feeds"""
     return fetch_news_summary()
 
 @mcp.tool()
-def tradingview_feed() -> list[dict]:
+def tradingview_feed() -> dict | None:
     """Fetch latest TradingView technical analysis feed items."""
     return fetch_tradingview_feed()
 
 @mcp.tool()
-def pivot_feeds() -> dict:
+def pivot_feeds() -> dict | None:
     """Get pivot points from multiple timeframes."""
     return get_pivots()
 
