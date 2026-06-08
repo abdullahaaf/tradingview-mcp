@@ -15,19 +15,19 @@ services:
     volumes:
       - log_data:/app/log
 
-  tradingview-rest:
-    build: .
-    container_name: tradingview-rest
-    ports:
-      - "8086:8001"
-    restart: unless-stopped
-    command: ["rest", "--host", "0.0.0.0", "--port", "8001"]
-    environment:
-      - PORT=8001
-      - HOST=0.0.0.0
-      - LOG_DIR=/app/log
-    volumes:
-      - log_data:/app/log
+  # tradingview-rest:
+  #   build: .
+  #   container_name: tradingview-rest
+  #   ports:
+  #     - "8086:8001"
+  #   restart: unless-stopped
+  #   command: ["rest", "--host", "0.0.0.0", "--port", "8001"]
+  #   environment:
+  #     - PORT=8001
+  #     - HOST=0.0.0.0
+  #     - LOG_DIR=/app/log
+  #   volumes:
+  #     - log_data:/app/log
 
   nginx:
     image: nginx:alpine
@@ -48,13 +48,13 @@ services:
       - TUNNEL_TOKEN=eyJhIjoiNjZhNjU0OWY1Y2U2NzFiNDc0OWIxYTFmY2Q1NWZjYjAiLCJ0IjoiNWFjMTA2NTEtYTk2ZS00YzZmLWE3YzQtZThjNzQxOWJlMDU5IiwicyI6Ik1qQmxOMlU0TXprdE5XTTFOUzAwT1RjMkxXRXlObUV0TkRNek1UUmpPVE5oTmpSayJ9
     restart: unless-stopped
 
-  tunnel2:
-    image: cloudflare/cloudflared:1734-a62d63d49d3f
-    container_name: tradingview-rest-tunnel
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=eyJhIjoiNjZhNjU0OWY1Y2U2NzFiNDc0OWIxYTFmY2Q1NWZjYjAiLCJ0IjoiNDViMGY1YzctMDRhNi00MDM0LWJjMjUtNjI5NWU2OTFjNzI0IiwicyI6IllqZzNPRFF4TkdVdE1HSTJaaTAwTkRZNUxXRXlOR0l0WVdGaU4yRmtObUl4TnpBeSJ9
-    restart: unless-stopped
+  # tunnel2:
+  #   image: cloudflare/cloudflared:1734-a62d63d49d3f
+  #   container_name: tradingview-rest-tunnel
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=eyJhIjoiNjZhNjU0OWY1Y2U2NzFiNDc0OWIxYTFmY2Q1NWZjYjAiLCJ0IjoiNDViMGY1YzctMDRhNi00MDM0LWJjMjUtNjI5NWU2OTFjNzI0IiwicyI6IllqZzNPRFF4TkdVdE1HSTJaaTAwTkRZNUxXRXlOR0l0WVdGaU4yRmtObUl4TnpBeSJ9
+  #   restart: unless-stopped
 
 volumes:
   log_data:
