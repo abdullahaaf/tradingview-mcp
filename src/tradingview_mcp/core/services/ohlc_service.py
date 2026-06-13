@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import os, time, requests
 from datetime import datetime, date, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 os.environ["TZ"] = "UTC"
 time.tzset()
+
+JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
 
 today = date.today()
 monday = today - timedelta(days=today.weekday())
@@ -17,23 +20,39 @@ all_time = {'current': today, 'start': monday, 'end': friday}
 # Utilities
 # ---------------------------------------------------------------------------
 
-def is_weekday(date_str: str) -> bool:
+def parse_datetime(dt_str: str) -> tuple[datetime, datetime]:
     """
-    Returns True if the given date string falls on a weekday (Monday to Friday).
-    Supports two formats: "YYYY-MM-DD HH:MM:SS" and "YYYY-MM-DD".
+    Parses a datetime string and returns (utc_datetime, jakarta_datetime).
+
+    Supports two input formats:
+      - "YYYY-MM-DD"          (daily)
+      - "YYYY-MM-DD HH:MM:SS" (intraday)
 
     Parameters:
-        date_str : date string to evaluate
+        dt_str : datetime string from Twelve Data
 
-    Raises:
-        ValueError if the format is not recognised.
+    Returns:
+        tuple of (datetime_utc, datetime_jakarta)
     """
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(date_str, fmt).weekday() < 5
-        except ValueError:
-            continue
-    raise ValueError(f"Format tidak dikenali: {date_str}")
+    if len(dt_str) == 10:
+        dt_utc = datetime.strptime(dt_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    else:
+        dt_utc = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    return dt_utc, dt_utc.astimezone(JAKARTA_TZ)
+
+
+def is_weekday_local(dt_str: str) -> bool:
+    """
+    Returns True if the candle falls on a weekday (Monday to Friday)
+    in the Asia/Jakarta timezone.
+
+    Supports "YYYY-MM-DD" (daily) and "YYYY-MM-DD HH:MM:SS" (intraday).
+
+    Parameters:
+        dt_str : datetime string from Twelve Data
+    """
+    _, dt_local = parse_datetime(dt_str)
+    return dt_local.weekday() < 5
 
 
 def get_previous_closed_candle(ohlc_data: list[dict], tf_minutes: int) -> dict:
@@ -107,22 +126,27 @@ def fetch_ohlc(timeframe: str) -> list[dict]:
     query_params = {
         'symbol': 'XAU/USD',
         'interval': timeframe,
-        'outputsize': 300,
-        'apikey': 'fddf27722a3c42c8873eabd35b1e3f59',
+        'outputsize': 350,
+        'apikey': os.getenv('TWELVE_API_KEY'),
         'timezone': 'UTC'
     }
 
     response = requests.get(url, params=query_params)
     response.raise_for_status()
     data = response.json()
-    cleaned_values = []
 
+    cleaned = []
     for val in data.get('values'):
-        if not is_weekday(val.get('datetime')):
+        dt_str = val.get('datetime')
+        if not dt_str or not is_weekday_local(dt_str):
             continue
-        cleaned_values.append(val)
+        _, dt_local = parse_datetime(dt_str)
+        val['datetime_local'] = dt_local.strftime(
+            "%Y-%m-%d" if len(dt_str) == 10 else "%Y-%m-%d %H:%M:%S"
+        )
+        cleaned.append(val)
 
-    return cleaned_values
+    return cleaned
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +329,7 @@ def fetch_ohlc_session(timeframe: str, tf_minutes: int) -> list[dict]:
         "start_date": start_dt.strftime("%Y-%m-%dT%H:%M:%S"),
         "end_date":   end_dt.strftime("%Y-%m-%dT%H:%M:%S"),
         "order":      "ASC",
-        "apikey":     "fddf27722a3c42c8873eabd35b1e3f59",
+        "apikey":     os.getenv('TWELVE_API_KEY'),
         "timezone":   "UTC",
     }
 
@@ -313,10 +337,18 @@ def fetch_ohlc_session(timeframe: str, tf_minutes: int) -> list[dict]:
     response.raise_for_status()
     data = response.json()
 
-    return [
-        val for val in data.get("values", [])
-        if is_weekday(val.get("datetime"))
-    ]
+    cleaned = []
+    for val in data.get("values", []):
+        dt_str = val.get("datetime")
+        if not dt_str or not is_weekday_local(dt_str):
+            continue
+        _, dt_local = parse_datetime(dt_str)
+        val["datetime_local"] = dt_local.strftime(
+            "%Y-%m-%d" if len(dt_str) == 10 else "%Y-%m-%d %H:%M:%S"
+        )
+        cleaned.append(val)
+
+    return cleaned
 
 
 def get_session_ohlc() -> dict | None:

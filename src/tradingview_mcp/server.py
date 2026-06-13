@@ -58,7 +58,8 @@ from tradingview_mcp.core.utils.validators import (
     sanitize_exchange,
 )
 
-from tradingview_mcp.core.services.ohlc_service import get_pivots, get_session_ohlc
+from tradingview_mcp.core.services.ohlc_service import get_pivots, get_session_ohlc, fetch_ohlc
+from tradingview_mcp.core.services.xau_analysis import analyze_xau
 
 try:
     import tradingview_screener  # noqa: F401
@@ -466,20 +467,14 @@ def market_sentiment(symbol: str, category: str = "all", limit: int = 20) -> dic
     return analyze_sentiment(symbol, category, limit)
 
 
-# @mcp.tool()
-# def financial_news(symbol: str = None, category: str = "stocks", limit: int = 10) -> dict:
-#     """Real-time financial news from RSS feeds (Reuters, CoinDesk, etc.)
-
-#     Args:
-#         symbol: Optional symbol filter ("AAPL", "BTC"). None = all news.
-#         category: Feed category ("crypto", "stocks", "all")
-#         limit: Max number of news items
-#     """
-#     return fetch_news_summary(symbol, category, limit)
-
 @mcp.tool()
 def financial_news() -> dict | None:
-    """Real-time financial news from RSS feeds"""
+    """Real-time financial news from RSS feeds (CNBC, InvestingLive).
+
+    Returns items from the last 24 hours. The response includes a broad set
+    of financial news; the caller/agent is expected to filter for relevance
+    (e.g. gold, FX, macro data, geopolitics) based on the current context.
+    """
     return fetch_news_summary()
 
 @mcp.tool()
@@ -491,6 +486,37 @@ def tradingview_feed() -> dict | None:
 def pivot_feeds() -> dict | None:
     """Get pivot points from multiple timeframes."""
     return get_pivots()
+
+@mcp.tool()
+def xau_analysis(price: float | None = None) -> dict | None:
+    """
+    Full XAUUSD multi-timeframe analysis: trend, ICT equilibrium,
+    premium/discount, EMA 200, 5-method pivot confluence and entry zones.
+
+    Fetches Daily, 4H, and 1H data from Twelve Data, then runs the
+    objective analysis engine. The user can provide a custom price for
+    context; otherwise the latest 1H close is used.
+
+    Args:
+        price: Current XAUUSD price for analysis context (optional).
+               If omitted, uses the latest 1H close price.
+
+    Returns:
+        Structured analysis with bias, confidence, entry zones, or
+        error dict if data cannot be fetched.
+    """
+    try:
+        daily = fetch_ohlc("1day")
+        fh    = fetch_ohlc("4h")
+        oneh  = fetch_ohlc("1h")
+    except Exception as e:
+        return {"error": f"Failed to fetch OHLC: {e}"}
+
+    if not daily or not fh or not oneh:
+        return {"error": "Insufficient OHLC data"}
+
+    return analyze_xau(daily, fh, oneh, current_price=price)
+
 
 @mcp.tool()
 def session_ohlc() -> dict | None:

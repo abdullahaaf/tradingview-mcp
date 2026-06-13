@@ -14,13 +14,13 @@ Sources:
 import json
 import logging
 import os
-import time
 import traceback
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 # ── JSON log formatter ────────────────────────────────────────────────────────
 
@@ -55,36 +55,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(_file_handler)
 
-# ── Timezone ──────────────────────────────────────────────────────────────────
-
-# set timezone to UTC
-os.environ["TZ"] = "UTC"
-time.tzset()
-
 # feedparser is bundled with agent-reach (installed globally)
 try:
     import feedparser
     _FEEDPARSER_AVAILABLE = True
 except ImportError:
     _FEEDPARSER_AVAILABLE = False
-
-# ─── Feed Catalog ─────────────────────────────────────────────────────────────
-
-RSS_FEEDS: dict[str, list[dict]] = {
-    "crypto": [
-        {"url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "name": "CoinDesk"},
-        {"url": "https://cointelegraph.com/rss", "name": "CoinTelegraph"},
-    ],
-    "stocks": [
-        {"url": "https://feeds.reuters.com/reuters/businessNews", "name": "Reuters Business"},
-        {"url": "https://feeds.reuters.com/reuters/companyNews", "name": "Reuters Company"},
-    ],
-    "all": [
-        {"url": "https://feeds.reuters.com/reuters/businessNews", "name": "Reuters Business"},
-        {"url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "name": "CoinDesk"},
-        {"url": "https://cointelegraph.com/rss", "name": "CoinTelegraph"},
-    ],
-}
 
 _TIMEOUT = 8
 
@@ -102,20 +78,7 @@ def _clean_html(text: str) -> str:
 
 
 def _derive_source(url: str) -> str:
-    SOURCE_MAP = {
-        "cnbc.com":        "CNBC",
-        "marketwatch.com": "MarketWatch",
-        "instaforex.com":  "InstaForex",
-        "reuters.com":     "Reuters",
-        "myfxbook.com":    "MyFXBook",
-        "dailyforex.com":  "DailyForex",
-        "investing.com":   "Investing.com",
-        "investinglive.com": "InvestingLive",
-    }
-    for domain, label in SOURCE_MAP.items():
-        if domain in url:
-            return label
-    return "Unknown"
+    return urlparse(url).netloc or "Unknown"
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────
@@ -263,15 +226,17 @@ def fetch_news() -> list[dict]:
 def fetch_news_summary() -> dict:
     """
     Fetch news and return structured dict for MCP tool output.
+    
+    Items contain: title, url, published, summary, source.
+    Agent / caller is responsible for filtering relevance.
     """
     items = fetch_news()
+    for item in items:
+        if isinstance(item.get("published"), datetime):
+            item["published"] = item["published"].isoformat()
     return {
-        'financial_news_data': {
-            "symbol": 'Gold',
-            "category": 'Futures',
-            "count": len(items),
-            "feedparser_available": _FEEDPARSER_AVAILABLE,
-            "items": items,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
+        "count": len(items),
+        "feedparser_available": _FEEDPARSER_AVAILABLE,
+        "items": items,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
