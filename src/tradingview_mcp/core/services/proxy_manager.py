@@ -25,15 +25,6 @@ import random
 import urllib.request
 from typing import Optional
 
-# Try loading .env file if python-dotenv is available
-try:
-    from dotenv import load_dotenv
-    _env_path = os.path.join(os.path.dirname(__file__), "../../../../.env")
-    load_dotenv(dotenv_path=_env_path, override=False)
-except ImportError:
-    pass
-
-
 # ─── Read config from env ─────────────────────────────────────────────────────
 
 def _cfg() -> dict:
