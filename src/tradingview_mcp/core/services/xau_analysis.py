@@ -3,7 +3,7 @@ from __future__ import annotations
 import statistics
 from typing import Optional
 
-from .indicators_calc import calc_ema
+from .indicators_calc import calc_ema, calc_sma
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +143,38 @@ def detect_trend(candles: list[dict], lookback: int = 5) -> str:
 # ---------------------------------------------------------------------------
 # EMA 200
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# ATR
+# ---------------------------------------------------------------------------
+
+def calc_atr(candles_desc: list[dict], period: int = 14) -> Optional[float]:
+    """
+    Returns the latest ATR(period) value from descending OHLC data.
+    """
+    if len(candles_desc) < period + 1:
+        return None
+
+    # Work with ascending order for sequential calculation
+    asc = list(reversed(candles_desc))
+    tr_values: list[float] = []
+
+    for i, c in enumerate(asc):
+        if i == 0:
+            tr = float(c["high"]) - float(c["low"])
+        else:
+            h = float(c["high"])
+            l = float(c["low"])
+            pc = float(asc[i - 1]["close"])
+            tr = max(h - l, abs(h - pc), abs(l - pc))
+        tr_values.append(tr)
+
+    # First ATR is SMA of first `period` TRs
+    atr = sum(tr_values[:period]) / period
+    for i in range(period, len(tr_values)):
+        atr = (atr * (period - 1) + tr_values[i]) / period
+    return atr
+
 
 def get_latest_ema_200(candles: list[dict]) -> Optional[float]:
     """
@@ -400,7 +432,10 @@ def calc_confluence_status(daily_trend: str, layer_4h_trend: str,
 
 def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
                 ohlc_1h: list[dict],
-                current_price: Optional[float] = None) -> dict:
+                current_price: Optional[float] = None,
+                zone_width_mode: str = "atr",
+                atr_multiplier: float = 0.2,
+                atr_period: int = 14) -> dict:
     """
     Main entry point. Runs the full analysis pipeline and returns a
     structured result dict.
@@ -427,6 +462,14 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
     daily_swings = find_swings(ohlc_daily, lookback=3, max_candles=30)
     daily_trend  = detect_trend(ohlc_daily, lookback=10)
     daily_ema200 = get_latest_ema_200(ohlc_daily)
+
+    # SMA200
+    daily_closes_asc = [float(c["close"]) for c in reversed(ohlc_daily)]
+    sma200_all = calc_sma(daily_closes_asc, 200)
+    daily_sma200 = sma200_all[-1] if sma200_all else None
+    sma_pos = "ABOVE" if (daily_sma200 and current_price > daily_sma200) else \
+              "BELOW" if (daily_sma200 and current_price < daily_sma200) else \
+              "NO_DATA"
 
     sw_h  = daily_swings["high"] or float(ohlc_daily[0]["high"])
     sw_l  = daily_swings["low"]  or float(ohlc_daily[0]["low"])
@@ -478,22 +521,35 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
     buy_zones  = []
     sell_zones = []
 
+    # Determine half-width for zones
+    if zone_width_mode == "atr":
+        atr_val = calc_atr(ohlc_daily, atr_period)
+        half = atr_val * atr_multiplier if atr_val and atr_val > 0 else current_price * 0.005
+    else:
+        half = current_price * 0.005
+
     if pivot_conf["nearest_support"]:
+        p = pivot_conf["nearest_support"]
         buy_zones.append({
-            "zone": [round(pivot_conf["nearest_support"] * 0.995, 2),
-                     round(pivot_conf["nearest_support"] * 1.005, 2)],
+            "zone": [round(p - half, 2), round(p + half, 2)],
             "source": "pivot_confluence",
             "strength": "HIGH" if pivot_conf["support_count"] >= 4 else
                         "MEDIUM" if pivot_conf["support_count"] >= 3 else "LOW",
+            "stop_loss": round(p - 14.00, 2),
+            "take_profit": round(p + 42.00, 2),
+            "note": "SL=1400pips, TP=4200pips (1:3)",
         })
 
     if pivot_conf["nearest_resistance"]:
+        p = pivot_conf["nearest_resistance"]
         sell_zones.append({
-            "zone": [round(pivot_conf["nearest_resistance"] * 0.995, 2),
-                     round(pivot_conf["nearest_resistance"] * 1.005, 2)],
+            "zone": [round(p - half, 2), round(p + half, 2)],
             "source": "pivot_confluence",
             "strength": "HIGH" if pivot_conf["resistance_count"] >= 4 else
                         "MEDIUM" if pivot_conf["resistance_count"] >= 3 else "LOW",
+            "stop_loss": round(p + 14.00, 2),
+            "take_profit": round(p - 42.00, 2),
+            "note": "SL=1400pips, TP=4200pips (1:3)",
         })
 
     if daily_pd == "DISCOUNT" and bias == "BUY":
@@ -529,6 +585,8 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
             "trend": daily_trend,
             "ema_200": round(daily_ema200, 2) if daily_ema200 else None,
             "price_vs_ema": ema_pos,
+            "sma_200": round(daily_sma200, 2) if daily_sma200 else None,
+            "price_vs_sma": sma_pos,
             "equilibrium": round(daily_eq, 2),
             "equilibrium_mode": daily_eq_mode,
             "premium_discount": daily_pd,
