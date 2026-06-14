@@ -509,6 +509,16 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
     pivots = calc_all_pivots(LH, LL, LC, LO)
     pivot_conf = score_pivot_confluence(pivots, current_price)
 
+    # ── 4H pivot calculation ────────────────────────────────────────────────
+    last_4h = ohlc_4h[1] if len(ohlc_4h) > 1 else ohlc_4h[0]
+    H4H = float(last_4h["high"])
+    H4L = float(last_4h["low"])
+    H4C = float(last_4h["close"])
+    H4O = float(last_4h["open"])
+
+    pivots_4h = calc_all_pivots(H4H, H4L, H4C, H4O)
+    pivot_conf_4h = score_pivot_confluence(pivots_4h, current_price)
+
     # ── Confluence ─────────────────────────────────────────────────────────
     bias = confluence_bias(daily_trend, ema_pos, daily_pd)
     conf = confluence_score(daily_trend, ema_pos, daily_pd,
@@ -525,8 +535,11 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
     if zone_width_mode == "atr":
         atr_val = calc_atr(ohlc_daily, atr_period)
         half = atr_val * atr_multiplier if atr_val and atr_val > 0 else current_price * 0.005
+        atr_val_4h = calc_atr(ohlc_4h, atr_period)
+        half_4h = atr_val_4h * atr_multiplier if atr_val_4h and atr_val_4h > 0 else current_price * 0.005
     else:
         half = current_price * 0.005
+        half_4h = current_price * 0.005
 
     if pivot_conf["nearest_support"]:
         p = pivot_conf["nearest_support"]
@@ -540,6 +553,18 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
             "note": "SL=1400pips, TP=4200pips (1:3)",
         })
 
+    if pivot_conf_4h["nearest_support"]:
+        p4 = pivot_conf_4h["nearest_support"]
+        buy_zones.append({
+            "zone": [round(p4 - half_4h, 2), round(p4 + half_4h, 2)],
+            "source": "4h_pivot_confluence",
+            "strength": "HIGH" if pivot_conf_4h["support_count"] >= 4 else
+                        "MEDIUM" if pivot_conf_4h["support_count"] >= 3 else "LOW",
+            "stop_loss": round(p4 - 14.00, 2),
+            "take_profit": round(p4 + 42.00, 2),
+            "note": "SL=1400pips, TP=4200pips (1:3)",
+        })
+
     if pivot_conf["nearest_resistance"]:
         p = pivot_conf["nearest_resistance"]
         sell_zones.append({
@@ -549,6 +574,18 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
                         "MEDIUM" if pivot_conf["resistance_count"] >= 3 else "LOW",
             "stop_loss": round(p + 14.00, 2),
             "take_profit": round(p - 42.00, 2),
+            "note": "SL=1400pips, TP=4200pips (1:3)",
+        })
+
+    if pivot_conf_4h["nearest_resistance"]:
+        p4 = pivot_conf_4h["nearest_resistance"]
+        sell_zones.append({
+            "zone": [round(p4 - half_4h, 2), round(p4 + half_4h, 2)],
+            "source": "4h_pivot_confluence",
+            "strength": "HIGH" if pivot_conf_4h["resistance_count"] >= 4 else
+                        "MEDIUM" if pivot_conf_4h["resistance_count"] >= 3 else "LOW",
+            "stop_loss": round(p4 + 14.00, 2),
+            "take_profit": round(p4 - 42.00, 2),
             "note": "SL=1400pips, TP=4200pips (1:3)",
         })
 
@@ -615,6 +652,12 @@ def analyze_xau(ohlc_daily: list[dict], ohlc_4h: list[dict],
             "confluence_score": pivot_conf["confluence_score"],
             "nearest_resistance": pivot_conf["nearest_resistance"],
             "nearest_support": pivot_conf["nearest_support"],
+        },
+        "4h_pivot_layer": {
+            "all_pivots": pivots_4h,
+            "confluence_score": pivot_conf_4h["confluence_score"],
+            "nearest_resistance": pivot_conf_4h["nearest_resistance"],
+            "nearest_support": pivot_conf_4h["nearest_support"],
         },
         "entry_zones": {
             "buy_zones": buy_zones,
